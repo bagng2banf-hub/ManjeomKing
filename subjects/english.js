@@ -1,0 +1,276 @@
+import { createMiniUnit, createUnit } from "./helpers.js";
+
+const english = {
+  id: "english",
+  name: "영어",
+  icon: "📘",
+  color: "#7e5ad6",
+  description: "중학교 시험 대비 문법을 형태, 의미, 쓰임, 변형까지 연결해 익히는 과목입니다.",
+  grades: [
+    {
+      id: "elementary6",
+      name: "초등학교 6학년",
+      units: [
+        createMiniUnit({
+          subject: "english",
+          grade: "elementary6",
+          title: "기초 회화와 be동사",
+          field: "회화·문법",
+          difficulty: "기초",
+          teaser: "자기소개, 상태 말하기, 간단한 질문과 대답에 쓰이는 be동사 표현을 정리합니다.",
+          achievementGoals: [
+            "am, are, is를 상황에 맞게 쓸 수 있다.",
+            "간단한 자기소개 문장을 만들 수 있다.",
+            "질문과 짧은 대답을 자연스럽게 말할 수 있다.",
+          ],
+          examImportance: "중학교 영어 문장 구조의 출발점이 되는 기본 표현들이다.",
+          concepts: [
+            { term: "be동사", simple: "상태와 신분을 나타내는 동사", detailed: "am, are, is로 형태가 달라진다.", exam: "주어에 맞는 형태 선택" },
+            { term: "자기소개", simple: "나를 소개하는 말", detailed: "이름, 학년, 기분, 좋아하는 것 등을 말하는 기본 회화", exam: "I am ~ 패턴 활용" },
+            { term: "의문문", simple: "묻는 문장", detailed: "be동사를 주어 앞으로 보내어 만든다.", exam: "Are you ~ ? 구조" },
+            { term: "짧은 대답", simple: "간단히 답하는 문장", detailed: "Yes, I am. / No, I’m not. 같은 형태", exam: "주어와 동사 맞추기" },
+          ],
+        }),
+      ],
+    },
+    {
+      id: "middle2",
+      name: "중학교 2학년",
+      units: [
+        createUnit({
+          subject: "english",
+          grade: "middle2",
+          title: "to부정사와 동명사",
+          field: "문법",
+          difficulty: "핵심",
+          teaser: "to부정사와 동명사의 형태, 뜻, 쓰임, 시험 빈칸 포인트를 한 번에 정리하는 단원입니다.",
+          achievementGoals: [
+            "to부정사와 동명사의 기본 형태를 구분할 수 있다.",
+            "문장 속에서 명사적, 형용사적, 부사적 쓰임을 설명할 수 있다.",
+            "동사를 보고 to부정사 목적어인지 동명사 목적어인지 판단할 수 있다.",
+          ],
+          examImportance: "형태는 쉬워 보여도 의미와 쓰임을 함께 봐야 하는 단원이라 빈칸, 영작, 문장 변형 문제로 자주 나온다.",
+          coreConcepts: [
+            { term: "to부정사", simple: "to + 동사원형 형태", detailed: "명사, 형용사, 부사처럼 여러 자리에 들어가며 목적, 감정의 원인, 명사 수식 등을 나타낼 수 있다.", exam: "to 뒤에는 동사원형이 오며, 문장 성분에 따라 해석이 달라진다." },
+            { term: "동명사", simple: "동사에 -ing를 붙여 명사처럼 쓰는 형태", detailed: "주어, 목적어, 보어 자리에 올 수 있으며 일반적으로 '~하는 것'으로 해석한다.", exam: "동명사는 명사 역할이지만 동사 성질을 일부 유지해 목적어나 부사를 가질 수 있다." },
+            { term: "목적어 자리", simple: "동작의 대상을 받는 자리", detailed: "want to go처럼 to부정사를 목적어로 받는 동사와 enjoy reading처럼 동명사를 목적어로 받는 동사를 구별해야 한다.", exam: "동사 뒤에 오는 형태를 묻는 시험 포인트" },
+            { term: "의미 차이", simple: "모양이 비슷해도 쓰임이 조금 다르다", detailed: "to부정사는 미래지향적 느낌이나 목적을 나타내는 경우가 많고, 동명사는 일반적 행위나 경험을 나타내는 경우가 많다.", exam: "의미 뉘앙스를 문장 맥락과 함께 본다." },
+          ],
+          principles: [
+            { title: "왜 둘 다 '~하는 것'으로 번역되기도 할까", body: "둘 다 문장에서 명사 역할을 할 수 있기 때문이다. 하지만 형태와 어울리는 동사, 문장 속 느낌이 다르므로 번역만 같다고 같은 구조라고 보면 안 된다." },
+            { title: "to부정사의 여러 쓰임", body: "I want to study.에서는 목적어, something to eat에서는 형용사적 용법, to pass the test에서는 목적을 나타내는 부사적 용법이다. 시험은 이 역할 구분을 자주 묻는다." },
+            { title: "동명사에서 자주 틀리는 부분", body: "전치사 뒤에는 보통 동명사가 오고, enjoy, finish, mind 같은 동사 뒤에도 동명사가 자연스럽다. to부정사와 섞어 쓰면 오답이 된다." },
+          ],
+          formulas: [
+            { name: "to부정사 형태", formula: "to + 동사원형", meaning: "to 뒤에는 반드시 동사원형을 쓴다." },
+            { name: "동명사 형태", formula: "동사 + ing", meaning: "문장에서 명사 역할을 하며 주어, 목적어, 보어로 쓰인다." },
+          ],
+          keyTerms: [
+            { term: "명사적 용법", meaning: "주어, 목적어, 보어 역할을 하는 쓰임" },
+            { term: "형용사적 용법", meaning: "명사를 꾸며 주는 쓰임" },
+            { term: "부사적 용법", meaning: "목적, 이유, 결과 등을 나타내는 쓰임" },
+            { term: "전치사", meaning: "뒤에 명사나 동명사가 오는 말" },
+          ],
+          mustMemorize: [
+            "to 뒤에는 동사원형이 온다.",
+            "전치사 뒤에는 동명사가 온다.",
+            "want, hope, plan은 to부정사와 잘 어울린다.",
+            "enjoy, finish, mind는 동명사와 잘 어울린다.",
+          ],
+          commonMistakes: [
+            "to 뒤에 동명사를 쓰는 실수",
+            "전치사 뒤에 to부정사를 쓰는 실수",
+            "to부정사와 동명사를 해석만 같다고 같은 것으로 처리하는 실수",
+          ],
+          examTips: [
+            "빈칸 앞 단어가 전치사인지 동사인지 먼저 본다.",
+            "문장에서 그 자리가 주어, 목적어, 명사 수식 중 어디인지 판단하면 용법 구분이 쉬워진다.",
+            "서술형은 형태, 어순, 철자를 함께 확인한다.",
+          ],
+          examples: [
+            { kind: "실생활 예시", title: "I want to be a doctor.", body: "want 뒤 목적어 자리에서 to부정사가 쓰인 예이다." },
+            { kind: "교과서형 예시", title: "Reading books is fun.", body: "동명사가 문장 주어로 쓰인 전형적인 문장이다." },
+            { kind: "시험형 예시", title: "I am interested in learning English.", body: "전치사 in 뒤이므로 learning이 와야 한다." },
+          ],
+          relatedFigures: [
+            { name: "문장 변형 포인트", work: "to부정사와 동명사는 시험에서 빈칸, 영작, 문장 전환 형태로 자주 묶여 나온다." },
+          ],
+          flashcards: [
+            { front: "to부정사", back: "to + 동사원형 / 목적·명사수식·명사 역할" },
+            { front: "동명사", back: "동사 + ing / 명사 역할" },
+            { front: "전치사 뒤", back: "보통 동명사" },
+            { front: "want", back: "목적어로 to부정사" },
+          ],
+          conversation: [
+            { situation: "진로 말하기", expression: "I want to study biology.", meaning: "나는 생물을 공부하고 싶어.", tip: "want 뒤에는 to부정사를 두는 패턴을 회화로 익힌다." },
+            { situation: "취미 말하기", expression: "I enjoy reading science magazines.", meaning: "나는 과학 잡지를 읽는 것을 즐겨.", tip: "enjoy 뒤에는 동명사가 자연스럽게 온다." },
+            { situation: "계획 묻기", expression: "What do you plan to do this weekend?", meaning: "이번 주말에 무엇을 할 계획이니?", tip: "plan to do를 질문형으로 돌리는 연습" },
+            { situation: "관심 표현", expression: "I am interested in learning English conversation.", meaning: "나는 영어 회화를 배우는 데 관심이 있어.", tip: "전치사 뒤 동명사 규칙이 실제 회화에서 그대로 쓰인다." },
+          ],
+          questions: createMiniUnit({
+            subject: "english",
+            grade: "middle2",
+            title: "to부정사와 동명사",
+            field: "문법",
+            difficulty: "핵심",
+            teaser: "",
+            achievementGoals: [],
+            examImportance: "",
+            concepts: [
+              { term: "to부정사", simple: "to + 동사원형", detailed: "명사·형용사·부사 역할 가능", exam: "to 뒤 동사원형" },
+              { term: "동명사", simple: "동사 + ing", detailed: "명사 역할을 하는 형태", exam: "전치사 뒤 자주 등장" },
+              { term: "명사적 용법", simple: "주어·목적어·보어 역할", detailed: "to부정사와 동명사 모두 가능", exam: "문장 성분 판단" },
+              { term: "형용사적 용법", simple: "명사 수식", detailed: "to부정사에서 자주 보임", exam: "something to eat" },
+              { term: "전치사 뒤 동명사", simple: "전치사 다음은 동명사", detailed: "interested in reading처럼 사용", exam: "전치사 뒤 to부정사 금지" },
+            ],
+          }).questions,
+          summary: {
+            tenLines: [
+              "to부정사는 to + 동사원형이다.",
+              "동명사는 동사 + ing이다.",
+              "둘 다 명사 역할을 할 수 있다.",
+              "to부정사는 형용사적, 부사적 용법도 있다.",
+              "전치사 뒤에는 동명사가 온다.",
+              "want는 to부정사와 잘 어울린다.",
+              "enjoy는 동명사와 잘 어울린다.",
+              "문장 속 자리를 보면 용법 구분이 쉽다.",
+              "빈칸 문제는 앞 단어를 먼저 본다.",
+              "서술형은 형태와 철자까지 점검한다.",
+            ],
+            table: [
+              { label: "to부정사", value: "to + 동사원형 / 목적·명사수식" },
+              { label: "동명사", value: "동사 + ing / 명사 역할" },
+              { label: "시험 포인트", value: "전치사 뒤, 동사 목적어 패턴" },
+            ],
+            oneMinute: "to부정사는 to+동사원형, 동명사는 동사+ing로 시작한다. 전치사 뒤에는 동명사, want류 뒤에는 to부정사라는 큰 흐름을 먼저 잡으면 빈칸 문제가 잘 풀린다.",
+            blanks: [
+              "to부정사 형태: to + ______",
+              "동명사 형태: 동사 + ______",
+              "전치사 뒤에는 보통 ______가 온다.",
+            ],
+          },
+        }),
+      ],
+    },
+    {
+      id: "middle1",
+      name: "중학교 1학년",
+      units: [
+        createMiniUnit({
+          subject: "english",
+          grade: "middle1",
+          title: "be동사와 일반동사",
+          field: "문법",
+          difficulty: "기초",
+          teaser: "중1 시험의 기본이 되는 두 문장 구조를 비교하며 정리합니다.",
+          achievementGoals: [
+            "be동사 문장과 일반동사 문장을 구분할 수 있다.",
+            "부정문과 의문문 만드는 방법을 설명할 수 있다.",
+            "3인칭 단수 현재형 변화에 주의할 수 있다.",
+          ],
+          examImportance: "모든 영문법 단원의 출발점으로, 이후 시제와 조동사에도 계속 연결된다.",
+          concepts: [
+            { term: "be동사", simple: "상태와 신분을 나타내는 동사", detailed: "am, are, is 형태로 주어에 따라 달라진다.", exam: "의문문은 be동사를 앞으로" },
+            { term: "일반동사", simple: "동작을 나타내는 동사", detailed: "부정문과 의문문에서 do, does를 사용한다.", exam: "does 뒤 동사원형" },
+            { term: "3인칭 단수", simple: "he, she, it, 단수명사", detailed: "현재형 일반동사에 -s/-es가 붙는다.", exam: "does와 동사-s 중복 금지" },
+            { term: "부정문", simple: "아니다, 하지 않는다", detailed: "be동사 뒤 not, 일반동사는 do not/does not 사용", exam: "문장 구조별 부정문 방식 구분" },
+          ],
+        }),
+      ],
+    },
+    {
+      id: "middle3",
+      name: "중학교 3학년",
+      units: [
+        createMiniUnit({
+          subject: "english",
+          grade: "middle3",
+          title: "현재완료와 관계사",
+          field: "문법",
+          difficulty: "심화",
+          teaser: "중3 시험에서 비중이 큰 현재완료와 관계사 구조를 비교하며 정리합니다.",
+          achievementGoals: [
+            "현재완료의 형태와 의미를 구분할 수 있다.",
+            "관계사의 역할을 설명할 수 있다.",
+            "두 문장을 관계사절로 묶을 수 있다.",
+          ],
+          examImportance: "형태는 어렵지 않지만 문장 구조 해석에서 실수가 많이 나오는 단원이다.",
+          concepts: [
+            { term: "현재완료", simple: "have/has + p.p. 형태", detailed: "경험, 완료, 계속, 결과 의미를 나타낸다.", exam: "뜻 구분과 시제 해석" },
+            { term: "관계대명사", simple: "두 문장을 이어 주는 말", detailed: "앞의 명사를 꾸며 주는 절을 이끈다.", exam: "선행사와 역할 파악" },
+            { term: "선행사", simple: "관계사가 꾸며 주는 명사", detailed: "관계사절 앞에 오는 대상 명사", exam: "who, which, that 선택 단서" },
+            { term: "문장 결합", simple: "두 문장을 하나로 합치는 것", detailed: "중복되는 명사를 관계사로 바꾸어 연결한다.", exam: "어순 유지" },
+          ],
+        }),
+      ],
+    },
+    {
+      id: "highCommon",
+      name: "고등 공통/기초",
+      units: [
+        createMiniUnit({
+          subject: "english",
+          grade: "highCommon",
+          title: "공통영어 독해와 요지 파악",
+          field: "공통영어",
+          difficulty: "고등 핵심",
+          teaser: "2029 대입 세대가 배우는 공통영어 흐름에 맞춰 중심 문장, 연결어, 지시어, 요지 문제를 묶어 정리합니다.",
+          achievementGoals: [
+            "문단의 중심 문장과 세부 근거를 구분할 수 있다.",
+            "연결어와 지시어를 통해 글의 흐름을 추적할 수 있다.",
+            "요지, 주제, 제목 유형 문제를 구분해 풀 수 있다.",
+          ],
+          examImportance: "고등 공통영어는 문법 암기보다 독해 속 구조 파악 능력이 더 중요해진다.",
+          concepts: [
+            { term: "topic sentence", simple: "문단 중심 문장", detailed: "문단이 핵심적으로 말하고자 하는 내용을 담는 문장", exam: "요지·주제 문제의 출발점" },
+            { term: "supporting details", simple: "세부 근거 문장", detailed: "예시, 이유, 설명처럼 중심 문장을 받쳐 주는 문장", exam: "중심 내용과 세부 내용 구분" },
+            { term: "transition", simple: "연결어", detailed: "however, therefore, for example처럼 흐름을 이어 주는 표현", exam: "문장 삽입·순서 배열의 단서" },
+            { term: "reference", simple: "지시 관계", detailed: "this, they, it 등이 무엇을 가리키는지 파악하는 것", exam: "대명사 지시 대상 문제" },
+          ],
+        }),
+        createMiniUnit({
+          subject: "english",
+          grade: "highCommon",
+          title: "공통영어 문법과 서술형 쓰기",
+          field: "공통영어",
+          difficulty: "고등 핵심",
+          teaser: "수일치, 시제, 관계사, 분사 구조를 실제 서술형 문장으로 연결해 정리합니다.",
+          achievementGoals: [
+            "문장 구조를 보고 어법 오류를 찾을 수 있다.",
+            "수일치와 시제, 관계사, 분사 구조를 서술형에 적용할 수 있다.",
+            "짧은 영작 답안을 문법 오류 없이 쓸 수 있다.",
+          ],
+          examImportance: "고등 영어는 문법 이름보다 문장 속 적용 능력을 묻는 경우가 많다.",
+          concepts: [
+            { term: "agreement", simple: "수일치", detailed: "주어의 수에 맞추어 동사 형태를 고르는 원리", exam: "주어 파악 후 동사 결정" },
+            { term: "tense consistency", simple: "시제 일관성", detailed: "문맥에 맞춰 시제를 통일하는 것", exam: "이야기 흐름에 맞는 시제 선택" },
+            { term: "relative clause", simple: "관계사절", detailed: "앞의 명사를 꾸며 주는 절", exam: "선행사와 관계사 역할 파악" },
+            { term: "participle", simple: "분사", detailed: "현재분사와 과거분사가 형용사처럼 쓰이는 구조", exam: "능동·수동 느낌 구분" },
+          ],
+        }),
+        createMiniUnit({
+          subject: "english",
+          grade: "highCommon",
+          title: "영어 회화 표현과 상황별 응답",
+          field: "회화",
+          difficulty: "고등 실전",
+          teaser: "학교생활, 진로, 의견 제시, 부탁과 제안 같은 회화 상황을 따로 모은 전용 회화 칸입니다.",
+          achievementGoals: [
+            "상황에 맞는 자연스러운 응답 표현을 고를 수 있다.",
+            "의견 제시와 동의·반대 표현을 구분해 쓸 수 있다.",
+            "진로와 학교생활 상황에서 자주 쓰는 회화 문장을 익힐 수 있다.",
+          ],
+          examImportance: "내신 수행평가와 듣기·회화형 문항에 바로 연결된다.",
+          concepts: [
+            { term: "opinion expression", simple: "의견 말하기 표현", detailed: "I think, In my opinion 같은 표현", exam: "의견 + 이유 구조" },
+            { term: "suggestion", simple: "제안 표현", detailed: "Why don't we, Let's, How about -ing", exam: "제안과 응답 짝 맞추기" },
+            { term: "request", simple: "부탁 표현", detailed: "Could you, Would you mind -ing", exam: "정중 표현 여부 확인" },
+            { term: "response strategy", simple: "자연스러운 응답 방식", detailed: "동의, 반대, 이유 제시를 짧고 분명하게 말하는 법", exam: "상황에 맞는 이어 말하기" },
+          ],
+        }),
+      ],
+    },
+  ],
+};
+
+export default english;
