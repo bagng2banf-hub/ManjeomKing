@@ -4,6 +4,7 @@ const storageKeys = {
   progress: "manjeom-progress-v2",
   wrong: "manjeom-wrong-v2",
   studiedToday: "manjeom-today-v2",
+  favorites: "manjeom-favorites-v2",
 };
 
 const state = {
@@ -18,6 +19,7 @@ const state = {
   searchResults: [],
   answers: {},
   checked: {},
+  quizSession: {},
   exam: {
     subjectId: "all",
     gradeId: "all",
@@ -35,6 +37,7 @@ const state = {
   progress: load(storageKeys.progress, {}),
   wrongNotes: load(storageKeys.wrong, []),
   studiedToday: load(storageKeys.studiedToday, {}),
+  favorites: load(storageKeys.favorites, []),
 };
 
 const app = document.getElementById("app");
@@ -104,6 +107,55 @@ function totalProgressPercent() {
 
 function unitProgress(unitId) {
   return state.progress[unitId] || 0;
+}
+
+function isFavorite(unitId) {
+  return state.favorites.includes(unitId);
+}
+
+function toggleFavorite(unitId) {
+  state.favorites = isFavorite(unitId)
+    ? state.favorites.filter((id) => id !== unitId)
+    : [unitId, ...state.favorites];
+  save(storageKeys.favorites, state.favorites);
+}
+
+function statusLabel(unit) {
+  return unit.statusLabel || "개념 작성중";
+}
+
+function statusClass(unit) {
+  return `status-${unit.statusTone || unit.status || "draft"}`;
+}
+
+function completionRatio(unit) {
+  const conceptReady = unit.coreConcepts?.length >= 4;
+  const questionReady = unit.questions?.length >= 20;
+  const reviewed = unit.status === "reviewed";
+  return Math.round(([conceptReady, questionReady, reviewed].filter(Boolean).length / 3) * 100);
+}
+
+function coverageRows() {
+  return allUnits().map((unit) => ({
+    ...unit,
+    ratio: completionRatio(unit),
+  }));
+}
+
+function quizFor(unit) {
+  const key = unit.id;
+  const questionIds = unit.questions.map((question) => question.id);
+  const current = state.quizSession[key];
+  if (!current || current.questionIds.join("|") !== questionIds.join("|")) {
+    state.quizSession[key] = {
+      index: 0,
+      questionIds,
+      correct: 0,
+      submitted: 0,
+      finished: false,
+    };
+  }
+  return state.quizSession[key];
 }
 
 function markStudied(unit) {
@@ -221,6 +273,7 @@ function renderTopbar() {
           <button data-route="wrong">오답노트</button>
           <button data-route="exam">시험 대비 모드</button>
           <button data-route="tracker">학습 진도표</button>
+          <button data-route="coverage">커버리지</button>
         </nav>
         <label class="searchbox">
           <span>⌕</span>
@@ -252,6 +305,8 @@ function renderMain() {
       return renderExamMode();
     case "tracker":
       return renderTracker();
+    case "coverage":
+      return renderCoveragePage();
     default:
       return renderHome();
   }
@@ -273,10 +328,12 @@ function renderHome() {
         <div class="hero-actions">
           <button class="primary-btn" data-route="subjects">과목별 학습 시작</button>
           <button class="ghost-btn" data-route="exam">시험 대비 모드 열기</button>
+          <button class="ghost-btn" data-route="coverage">커버리지 확인</button>
         </div>
         <div class="hero-stats">
-          <div class="stat-card"><strong>6과목</strong><span>학습 과목</span></div>
+          <div class="stat-card"><strong>${subjects.length}과목</strong><span>학습 과목</span></div>
           <div class="stat-card"><strong>${allUnits().length}단원</strong><span>샘플 및 확장형 데이터</span></div>
+          <div class="stat-card"><strong>${allUnits().filter((unit) => unit.status === "reviewed").length}개</strong><span>검수 완료 상세 단원</span></div>
           <div class="stat-card"><strong>${totalProgressPercent()}%</strong><span>전체 진행률</span></div>
         </div>
       </div>
@@ -485,17 +542,23 @@ function renderSubjectDetailPage() {
 
 function renderUnitCard(subject, grade, unit) {
   const progress = unitProgress(unit.id);
+  const favorite = isFavorite(unit.id);
   return `
     <button class="unit-card" style="--subject-color:${subject.color}" data-open-unit="${subject.id}|${grade.id}|${unit.id}">
       <div class="unit-card-top">
         <span class="badge">${unit.field}</span>
         <span class="badge badge-soft">${unit.difficulty}</span>
       </div>
+      <div class="unit-card-top">
+        <span class="status-badge ${statusClass(unit)}">${statusLabel(unit)}</span>
+        <span class="favorite-dot ${favorite ? "active" : ""}">${favorite ? "★" : "☆"}</span>
+      </div>
       <h3>${unit.title}</h3>
       <p>${unit.teaser}</p>
       <div class="unit-stats">
         <span>핵심 개념 ${unit.coreConcepts.length}개</span>
         <span>문제 ${unit.questions.length}개</span>
+        <span>완성도 ${completionRatio(unit)}%</span>
       </div>
       <div class="progress-row">
         <div class="progress-bar"><span style="width:${progress}%"></span></div>
@@ -542,7 +605,14 @@ function renderUnitPage() {
           <div class="badge-row">
             <span class="badge">${unit.field}</span>
             <span class="badge badge-soft">${unit.difficulty}</span>
+            <span class="status-badge ${statusClass(unit)}">${statusLabel(unit)}</span>
           </div>
+          <div class="support-metric">
+            <strong>${completionRatio(unit)}%</strong>
+            <span>자료 완성도 · ${unit.questions.length}문항</span>
+          </div>
+          ${unit.coverageNote ? `<p class="coverage-note">${unit.coverageNote}</p>` : ""}
+          <button class="ghost-btn wide-btn" data-toggle-favorite="${unit.id}">${isFavorite(unit.id) ? "★ 즐겨찾기 해제" : "☆ 즐겨찾기 추가"}</button>
           <button class="primary-btn wide-btn" data-complete-unit="${unit.id}">학습 완료 체크</button>
           <button class="ghost-btn wide-btn" data-open-summary="${subject.id}|${grade.id}|${unit.id}">요약 화면 보기</button>
         </aside>
@@ -624,9 +694,9 @@ function renderUnitOverview(unit) {
               <h3>공식 · 법칙 · 이론</h3>
               ${unit.formulas.map((item) => `
                 <div class="formula-row">
-                  <strong>${item.name}</strong>
-                  <code>${item.formula}</code>
-                  <p>${item.meaning}</p>
+                  <strong>${item.name || item.title}</strong>
+                  ${item.formula ? `<code>${item.formula}</code>` : ""}
+                  <p>${item.meaning || item.body}</p>
                 </div>
               `).join("")}
             </div>
@@ -674,6 +744,25 @@ function renderUnitOverview(unit) {
           </div>
         </article>
 
+        ${unit.comparisonTable?.length ? `
+          <article class="info-card">
+            <div class="section-head compact">
+              <div>
+                <span class="eyebrow">비교표</span>
+                <h2>헷갈리는 개념을 한눈에 구분하기</h2>
+              </div>
+            </div>
+            <div class="compare-table">
+              ${unit.comparisonTable.map((row) => `
+                <div class="compare-row">
+                  <strong>${row.label}</strong>
+                  <span>${row.value}</span>
+                </div>
+              `).join("")}
+            </div>
+          </article>
+        ` : ""}
+
         ${unit.conversation?.length ? `
           <article class="info-card">
             <div class="section-head compact">
@@ -709,15 +798,40 @@ function renderUnitOverview(unit) {
       </div>
 
       <aside class="content-side">
+        <article class="side-card study-helper">
+          <h3>학습 보조</h3>
+          <div class="helper-row">
+            <span>완성 상태</span>
+            <strong>${statusLabel(unit)}</strong>
+          </div>
+          <div class="helper-row">
+            <span>예상 학습</span>
+            <strong>${unit.recommendedMinutes || 35}분</strong>
+          </div>
+          <div class="helper-row">
+            <span>문제 수</span>
+            <strong>${unit.questions.length}개</strong>
+          </div>
+          <button class="primary-btn wide-btn" data-unit-tab="quiz">문제 바로 풀기</button>
+          <button class="ghost-btn wide-btn" data-route="wrong">오답노트 보기</button>
+        </article>
+        ${unit.studyChecklist?.length ? `
+          <article class="side-card">
+            <h3>만점 체크리스트</h3>
+            <ul class="bullet-list">
+              ${unit.studyChecklist.map((item) => `<li>${item}</li>`).join("")}
+            </ul>
+          </article>
+        ` : ""}
         <article class="side-card">
           <h3>관련 인물</h3>
           <div class="side-list">
-            ${unit.relatedFigures.map((figure) => `
+            ${unit.relatedFigures.length ? unit.relatedFigures.map((figure) => `
               <div class="figure-row">
                 <strong>${figure.name}</strong>
                 <p>${figure.work}</p>
               </div>
-            `).join("")}
+            `).join("") : `<p class="empty-copy">이 단원은 특정 인물보다 개념 연결이 중심입니다.</p>`}
           </div>
         </article>
         <article class="side-card">
@@ -744,26 +858,54 @@ function renderFlashCard(card) {
 
 function renderUnitQuiz(unit) {
   setProgress(unit.id, Math.max(unitProgress(unit.id), 32));
+  const session = quizFor(unit);
+  const currentQuestion = unit.questions[session.index];
+  const total = unit.questions.length;
+  if (!currentQuestion || session.finished) {
+    const score = Math.round((session.correct / Math.max(session.submitted, 1)) * 100);
+    return `
+      <section class="section quiz-section">
+        <article class="result-card quiz-result-card">
+          <div class="panel-head">
+            <div>
+              <span class="eyebrow">문제 풀이 완료</span>
+              <h2>${unit.title} 결과</h2>
+            </div>
+            <span class="badge">${score}%</span>
+          </div>
+          <p>정답 ${session.correct}개 / 제출 ${session.submitted}개 / 전체 ${total}문제</p>
+          <p>틀린 문제는 자동으로 오답노트에 저장되었습니다. 다시 풀 때는 개념 카드와 해설을 먼저 확인해 보세요.</p>
+          <div class="quiz-actions">
+            <button class="primary-btn" data-restart-quiz="${unit.id}">처음부터 다시 풀기</button>
+            <button class="ghost-btn" data-route="wrong">오답노트 보기</button>
+          </div>
+        </article>
+      </section>
+    `;
+  }
   return `
     <section class="section quiz-section">
       <div class="section-head">
         <div>
           <span class="eyebrow">⑦ 문제 풀기</span>
-          <h2>개념 확인, 객관식, 서술형, 심화 문제</h2>
+          <h2>선택 · 제출 · 해설 · 다음 문제 흐름</h2>
         </div>
-        <p>${unit.questions.length}문제로 구성되어 있으며, 틀리면 오답노트에 자동 저장됩니다.</p>
+        <p>${session.index + 1}/${total}문제 · 제출하면 정답과 해설이 바로 나오고, 오답은 오답노트에 저장됩니다.</p>
       </div>
-      <div class="quiz-stack">
-        ${unit.questions.map((question, index) => renderQuestion(unit, question, index)).join("")}
+      <div class="progress-row quiz-progress">
+        <div class="progress-bar"><span style="width:${Math.round(((session.index + 1) / total) * 100)}%"></span></div>
+        <strong>${Math.round(((session.index + 1) / total) * 100)}%</strong>
       </div>
+      ${renderQuestion(unit, currentQuestion, session.index, session)}
     </section>
   `;
 }
 
-function renderQuestion(unit, question, index) {
+function renderQuestion(unit, question, index, session = null) {
   const answer = state.answers[question.id];
   const checked = state.checked[question.id];
   const correct = checked ? isCorrect(question, answer) : false;
+  const canGoNext = checked && session && index < unit.questions.length - 1;
   return `
     <article class="quiz-card">
       <div class="quiz-meta">
@@ -785,6 +927,8 @@ function renderQuestion(unit, question, index) {
       `}
       <div class="quiz-actions">
         <button class="primary-btn" data-check-question="${unit.subjectId}|${unit.gradeId}|${unit.id}|${question.id}">정답 확인</button>
+        ${canGoNext ? `<button class="primary-btn" data-next-question="${unit.id}">다음 문제</button>` : ""}
+        ${checked && session && index >= unit.questions.length - 1 ? `<button class="primary-btn" data-finish-quiz="${unit.id}">결과 보기</button>` : ""}
         <button class="ghost-btn" data-jump-concept="${slug(question.relatedConcept)}">관련 개념 보기</button>
       </div>
       ${checked ? `
@@ -1098,6 +1242,103 @@ function renderTracker() {
   `;
 }
 
+function renderCoveragePage() {
+  const rows = coverageRows();
+  const statusCounts = rows.reduce((map, unit) => {
+    const key = unit.status || "lessonDraft";
+    map[key] = (map[key] || 0) + 1;
+    return map;
+  }, {});
+  const reviewed = rows.filter((unit) => unit.status === "reviewed").length;
+  const outlineOnly = rows.filter((unit) => unit.status === "outlineOnly");
+  const bySubject = subjects.map((subject) => {
+    const units = rows.filter((unit) => unit.subjectId === subject.id);
+    const complete = units.filter((unit) => unit.status === "reviewed").length;
+    return { subject, units, complete };
+  });
+
+  return `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">교육과정 커버리지</span>
+          <h2>전체 목차와 완성 상태를 솔직하게 확인하기</h2>
+        </div>
+        <p>검수 완료 단원만 완성으로 표시하고, 목차만 있는 단원은 보강 예정으로 분리했습니다.</p>
+      </div>
+
+      <div class="coverage-summary">
+        <article class="panel-card">
+          <strong>${subjects.length}</strong>
+          <span>과목</span>
+        </article>
+        <article class="panel-card">
+          <strong>${rows.length}</strong>
+          <span>전체 단원 목차</span>
+        </article>
+        <article class="panel-card">
+          <strong>${reviewed}</strong>
+          <span>검수 완료 상세 단원</span>
+        </article>
+        <article class="panel-card">
+          <strong>${outlineOnly.length}</strong>
+          <span>보강 예정 단원</span>
+        </article>
+      </div>
+
+      <article class="panel-card">
+        <div class="panel-head">
+          <h3>상태별 현황</h3>
+          <span class="badge badge-soft">outlineOnly · lessonDraft · reviewed</span>
+        </div>
+        <div class="status-strip">
+          ${Object.entries(statusCounts).map(([status, count]) => `
+            <span class="status-badge status-${status}">${status} ${count}개</span>
+          `).join("")}
+        </div>
+      </article>
+
+      <div class="coverage-grid">
+        ${bySubject.map(({ subject, units, complete }) => `
+          <article class="coverage-card" style="--subject-color:${subject.color}">
+            <div class="panel-head">
+              <h3>${subject.icon} ${subject.name}</h3>
+              <span class="badge badge-soft">${complete}/${units.length} 검수 완료</span>
+            </div>
+            <div class="progress-row">
+              <div class="progress-bar"><span style="width:${Math.round((complete / Math.max(units.length, 1)) * 100)}%; background:${subject.color}"></span></div>
+              <strong>${Math.round((complete / Math.max(units.length, 1)) * 100)}%</strong>
+            </div>
+            <div class="coverage-unit-list">
+              ${units.slice(0, 10).map((unit) => `
+                <button class="coverage-unit" data-open-unit="${unit.subjectId}|${unit.gradeId}|${unit.id}">
+                  <span class="status-badge ${statusClass(unit)}">${statusLabel(unit)}</span>
+                  <strong>${unit.title}</strong>
+                  <small>${unit.gradeName} · ${unit.questions.length}문항 · 완성도 ${unit.ratio}%</small>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+
+      <article class="panel-card">
+        <div class="panel-head">
+          <h3>보강이 필요한 단원</h3>
+          <span class="badge badge-soft">${outlineOnly.length}개</span>
+        </div>
+        <div class="missing-grid">
+          ${outlineOnly.slice(0, 48).map((unit) => `
+            <button class="list-chip missing-chip" data-open-unit="${unit.subjectId}|${unit.gradeId}|${unit.id}">
+              ${unit.subjectIcon} ${unit.subjectName} · ${unit.gradeName} · ${unit.title}
+            </button>
+          `).join("")}
+        </div>
+      </article>
+    </section>
+  `;
+}
+
 function renderSearchPage() {
   state.searchResults = searchContent(state.query);
   return `
@@ -1317,11 +1558,52 @@ document.addEventListener("click", (event) => {
     if (!unit || !subject || !grade) return;
     const fullUnit = { ...unit, subjectId, subjectName: subject.name, gradeId, gradeName: grade.name, subjectColor: subject.color, subjectIcon: subject.icon };
     const question = unit.questions.find((item) => item.id === questionId);
+    if (!question) return;
+    const wasChecked = Boolean(state.checked[questionId]);
     state.checked[questionId] = true;
-    if (!isCorrect(question, state.answers[questionId])) recordWrongNote(fullUnit, question, state.answers[questionId]);
+    const correct = isCorrect(question, state.answers[questionId]);
+    if (!correct) recordWrongNote(fullUnit, question, state.answers[questionId]);
     else setProgress(unitId, Math.min(100, Math.max(unitProgress(unitId), 70)));
+    const session = state.quizSession[unitId];
+    if (session && !wasChecked) {
+      session.submitted += 1;
+      if (correct) session.correct += 1;
+    }
     const checkedCount = Object.keys(state.checked).length;
     if (checkedCount >= unit.questions.length) setProgress(unitId, 100);
+    render();
+    return;
+  }
+
+  if (button.dataset.nextQuestion) {
+    const session = state.quizSession[button.dataset.nextQuestion];
+    if (session) session.index = Math.min(session.index + 1, session.questionIds.length - 1);
+    render();
+    return;
+  }
+
+  if (button.dataset.finishQuiz) {
+    const session = state.quizSession[button.dataset.finishQuiz];
+    if (session) session.finished = true;
+    setProgress(button.dataset.finishQuiz, Math.max(unitProgress(button.dataset.finishQuiz), 88));
+    render();
+    return;
+  }
+
+  if (button.dataset.restartQuiz) {
+    const unitId = button.dataset.restartQuiz;
+    const questionIds = state.quizSession[unitId]?.questionIds || [];
+    questionIds.forEach((id) => {
+      delete state.answers[id];
+      delete state.checked[id];
+    });
+    delete state.quizSession[unitId];
+    render();
+    return;
+  }
+
+  if (button.dataset.toggleFavorite) {
+    toggleFavorite(button.dataset.toggleFavorite);
     render();
     return;
   }
