@@ -5,8 +5,9 @@ import history from "./history.js";
 import english from "./english.js";
 import korean from "./korean.js";
 import { applyCurriculumExpansion } from "./curriculumExpansion.js";
+import { enrichSubjects } from "./enrichment.js";
 
-export const subjects = applyCurriculumExpansion([math, science, society, history, english, korean]);
+export const subjects = enrichSubjects(applyCurriculumExpansion([math, science, society, history, english, korean]));
 export const subjectMap = Object.fromEntries(subjects.map((subject) => [subject.id, subject]));
 
 export const gradeLabels = {

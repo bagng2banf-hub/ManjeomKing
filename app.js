@@ -969,6 +969,25 @@ function renderUnitOverview(unit) {
           <button class="primary-btn wide-btn" data-unit-tab="quiz">문제 바로 풀기</button>
           <button class="ghost-btn wide-btn" data-route="wrong">오답노트 보기</button>
         </article>
+        ${unit.problemPlan ? `
+          <article class="side-card problem-plan-card">
+            <h3>문제 풀이 계획</h3>
+            <div class="helper-row">
+              <span>총 문항</span>
+              <strong>${unit.problemPlan.count}개</strong>
+            </div>
+            <div class="helper-row">
+              <span>권장 시간</span>
+              <strong>${unit.problemPlan.minutes}분</strong>
+            </div>
+            <div class="difficulty-strip">
+              <span>쉬움 ${unit.problemPlan.easy}</span>
+              <span>보통 ${unit.problemPlan.normal}</span>
+              <span>어려움 ${unit.problemPlan.hard}</span>
+            </div>
+            <p>${unit.problemPlan.review}</p>
+          </article>
+        ` : ""}
         ${unit.studyChecklist?.length ? `
           <article class="side-card">
             <h3>만점 체크리스트</h3>
@@ -988,6 +1007,19 @@ function renderUnitOverview(unit) {
             `).join("") : `<p class="empty-copy">이 단원은 특정 인물보다 개념 연결이 중심입니다.</p>`}
           </div>
         </article>
+        ${unit.referenceLinks?.length ? `
+          <article class="side-card reference-card">
+            <h3>연관 자료</h3>
+            <div class="side-list">
+              ${unit.referenceLinks.map((link) => `
+                <a class="reference-link" href="${link.url}" target="_blank" rel="noopener noreferrer">
+                  <strong>${link.label}</strong>
+                  <p>${link.note}</p>
+                </a>
+              `).join("")}
+            </div>
+          </article>
+        ` : ""}
         <article class="side-card">
           <h3>개념 카드</h3>
           <div class="flash-grid">
