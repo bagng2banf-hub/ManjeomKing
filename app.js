@@ -578,6 +578,9 @@ function renderGradesPage() {
     { key: "middle1", title: "중학교 1학년", items: unitsByGrade("middle1") },
     { key: "middle2", title: "중학교 2학년", items: unitsByGrade("middle2") },
     { key: "middle3", title: "중학교 3학년", items: unitsByGrade("middle3") },
+    { key: "high1", title: "고등학교 1학년", items: unitsByGrade("high1") },
+    { key: "high2", title: "고등학교 2학년", items: unitsByGrade("high2") },
+    { key: "high3", title: "고등학교 3학년", items: unitsByGrade("high3") },
     { key: "highCommon", title: "고등 공통/기초", items: unitsByGrade("highCommon") },
   ];
   return `
@@ -1330,7 +1333,7 @@ function renderExamMode() {
           </select>
           <select id="exam-grade" class="filter-select">
             <option value="all">전체 학년</option>
-            ${["elementary3", "elementary4", "elementary5", "elementary6", "middle1", "middle2", "middle3", "highCommon"].map((gradeId) => `
+            ${["elementary3", "elementary4", "elementary5", "elementary6", "middle1", "middle2", "middle3", "high1", "high2", "high3", "highCommon"].map((gradeId) => `
               <option value="${gradeId}" ${state.exam.gradeId === gradeId ? "selected" : ""}>${gradeLabels[gradeId]}</option>
             `).join("")}
           </select>

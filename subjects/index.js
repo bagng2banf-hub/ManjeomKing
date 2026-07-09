@@ -17,5 +17,8 @@ export const gradeLabels = {
   middle1: "중학교 1학년",
   middle2: "중학교 2학년",
   middle3: "중학교 3학년",
+  high1: "고등학교 1학년",
+  high2: "고등학교 2학년",
+  high3: "고등학교 3학년",
   highCommon: "고등 공통/기초 · 2029 대입 흐름",
 };
