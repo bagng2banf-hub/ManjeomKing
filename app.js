@@ -5,6 +5,7 @@ const storageKeys = {
   wrong: "manjeom-wrong-v2",
   studiedToday: "manjeom-today-v2",
   favorites: "manjeom-favorites-v2",
+  solvedToday: "manjeom-solved-today-v2",
 };
 
 const state = {
@@ -38,6 +39,8 @@ const state = {
   wrongNotes: load(storageKeys.wrong, []),
   studiedToday: load(storageKeys.studiedToday, {}),
   favorites: load(storageKeys.favorites, []),
+  solvedToday: load(storageKeys.solvedToday, {}),
+  wrongFilter: "all",
 };
 
 const app = document.getElementById("app");
@@ -109,6 +112,16 @@ function unitProgress(unitId) {
   return state.progress[unitId] || 0;
 }
 
+function todaySolvedCount() {
+  return state.solvedToday[todayKey()] || 0;
+}
+
+function recordSolvedQuestion(count = 1) {
+  const key = todayKey();
+  state.solvedToday[key] = (state.solvedToday[key] || 0) + count;
+  save(storageKeys.solvedToday, state.solvedToday);
+}
+
 function isFavorite(unitId) {
   return state.favorites.includes(unitId);
 }
@@ -118,6 +131,25 @@ function toggleFavorite(unitId) {
     ? state.favorites.filter((id) => id !== unitId)
     : [unitId, ...state.favorites];
   save(storageKeys.favorites, state.favorites);
+}
+
+function importanceLabel(unit) {
+  if (unit.status === "reviewed" || unit.questions.length >= 20) return "매우 중요";
+  if (unit.questions.length >= 12 || unit.status === "lessonDraft") return "중요";
+  return "기초";
+}
+
+function completionLabel(unit) {
+  if (unitProgress(unit.id) >= 100) return "완료";
+  if (unitProgress(unit.id) >= 40) return "진행 중";
+  return "시작 전";
+}
+
+function nextUnitForSubject(subject) {
+  const units = subject.grades.flatMap((grade) =>
+    grade.units.map((unit) => ({ ...unit, gradeId: grade.id }))
+  );
+  return units.find((unit) => unitProgress(unit.id) < 100) || units[0];
 }
 
 function statusLabel(unit) {
@@ -156,6 +188,32 @@ function quizFor(unit) {
     };
   }
   return state.quizSession[key];
+}
+
+function currentLocationTrail() {
+  if (state.route === "unit") {
+    const subject = getSubject(state.subjectId);
+    const grade = getGrade(state.subjectId, state.gradeId);
+    const unit = getUnit(state.subjectId, state.gradeId, state.unitId);
+    return [subject?.name, grade?.name, unit?.title].filter(Boolean);
+  }
+  if (state.route === "subject") {
+    const subject = getSubject(state.subjectId);
+    const grade = getGrade(state.subjectId, state.gradeId);
+    return [subject?.name, grade?.name].filter(Boolean);
+  }
+  const labels = {
+    home: "홈",
+    subjects: "과목 선택",
+    grades: "학년 선택",
+    concepts: "개념 카드",
+    practice: "문제 풀기",
+    wrong: "오답노트",
+    exam: "실전 시험",
+    tracker: "학습 진도",
+    coverage: "커버리지",
+  };
+  return [labels[state.route] || "홈"];
 }
 
 function markStudied(unit) {
@@ -212,10 +270,13 @@ function recordWrongNote(unit, question, userAnswer) {
     prompt: question.prompt,
     type: question.type,
     difficulty: question.difficulty,
+    relatedConcept: question.relatedConcept,
     correctAnswer: question.options ? question.options[question.answer] : question.answer,
     explanation: question.explanation,
     memo: state.wrongNotes.find((item) => item.id === `${unit.id}-${question.id}`)?.memo || "",
-    userAnswer,
+    userAnswer: question.options ? question.options[userAnswer] ?? "미선택" : userAnswer,
+    createdAt: state.wrongNotes.find((item) => item.id === `${unit.id}-${question.id}`)?.createdAt || new Date().toISOString(),
+    reviewed: state.wrongNotes.find((item) => item.id === `${unit.id}-${question.id}`)?.reviewed || false,
   };
   state.wrongNotes = [entry, ...state.wrongNotes.filter((item) => item.id !== entry.id)];
   save(storageKeys.wrong, state.wrongNotes);
@@ -260,10 +321,11 @@ function render() {
 }
 
 function renderTopbar() {
+  const trail = currentLocationTrail();
   return `
     <header class="topbar">
       <div class="topbar-inner">
-        <button class="brand" data-route="home">만점킹</button>
+        <button class="brand" data-route="home">만점왕</button>
         <nav class="topnav">
           <button data-route="home">홈</button>
           <button data-route="subjects">과목별 학습</button>
@@ -279,6 +341,10 @@ function renderTopbar() {
           <span>⌕</span>
           <input id="global-search" value="${escapeHtml(state.query)}" placeholder="열평형, 정비례, 지동설처럼 검색해 보세요" />
         </label>
+      </div>
+      <div class="location-bar">
+        <span>현재 위치</span>
+        <strong>${trail.join(" › ")}</strong>
       </div>
     </header>
   `;
@@ -319,36 +385,69 @@ function renderHome() {
   const recommendations = allUnits()
     .sort((a, b) => (unitProgress(a.id) || 0) - (unitProgress(b.id) || 0))
     .slice(0, 4);
+  const nextUnit = recommendations[0];
+  const primaryActions = [
+    { icon: "📘", title: "개념 공부", copy: "과목과 학년을 골라 핵심 개념부터 정리", route: "subjects", cta: "과목 선택" },
+    { icon: "✏️", title: "문제 풀기", copy: "단원별 문제를 풀고 바로 채점", route: "practice", cta: "문제 시작" },
+    { icon: "🧠", title: "오답 노트", copy: "틀린 문제와 약한 개념을 다시 복습", route: "wrong", cta: "오답 복습" },
+    { icon: "⏱️", title: "실전 시험", copy: "제한 시간 안에 랜덤 문제로 점검", route: "exam", cta: "시험 보기" },
+  ];
   return `
     <section class="hero">
       <div class="hero-copy">
-        <span class="badge badge-sand">2022 개정 교육과정 흐름 반영</span>
-        <h1>진짜 시험 만점 대비용으로 다시 만든 학습 사이트</h1>
-        <p>과목별, 학년별, 단원별로 개념 이해부터 문제 풀이, 오답 정리, 시험 직전 요약까지 한 번에 이어지는 만점형 학습 플랫폼입니다.</p>
+        <span class="badge badge-sand">과목 → 학년 → 단원 → 개념 → 문제 → 오답 복습</span>
+        <h1>만점왕 학습 대시보드</h1>
+        <p>앱을 켜자마자 오늘 무엇을 공부할지 고르고, 개념 학습부터 실전 시험까지 끊기지 않게 이어가도록 정리했습니다.</p>
         <div class="hero-actions">
-          <button class="primary-btn" data-route="subjects">과목별 학습 시작</button>
-          <button class="ghost-btn" data-route="exam">시험 대비 모드 열기</button>
-          <button class="ghost-btn" data-route="coverage">커버리지 확인</button>
+          <button class="primary-btn" data-open-unit="${nextUnit.subjectId}|${nextUnit.gradeId}|${nextUnit.id}">이어서 공부하기</button>
+          <button class="ghost-btn" data-route="coverage">교육과정 커버리지</button>
         </div>
         <div class="hero-stats">
           <div class="stat-card"><strong>${subjects.length}과목</strong><span>학습 과목</span></div>
           <div class="stat-card"><strong>${allUnits().length}단원</strong><span>샘플 및 확장형 데이터</span></div>
           <div class="stat-card"><strong>${allUnits().filter((unit) => unit.status === "reviewed").length}개</strong><span>검수 완료 상세 단원</span></div>
+          <div class="stat-card"><strong>${todaySolvedCount()}문제</strong><span>오늘 푼 문제</span></div>
           <div class="stat-card"><strong>${totalProgressPercent()}%</strong><span>전체 진행률</span></div>
         </div>
       </div>
       <aside class="hero-panel">
-        <h3>오늘의 추천 학습</h3>
+        <div class="panel-head">
+          <h3>오늘의 학습 목표</h3>
+          <span class="badge badge-soft">${todayUnits.length}단원 학습</span>
+        </div>
+        <p class="empty-copy">1개 단원 개념 정리 → 5문제 풀이 → 오답 1개 복습을 목표로 잡아 보세요.</p>
         <div class="recommend-stack">
           ${recommendations.map((unit) => `
             <button class="mini-unit" data-open-unit="${unit.subjectId}|${unit.gradeId}|${unit.id}">
               <span class="mini-unit-subject" style="--subject-color:${unit.subjectColor}">${unit.subjectIcon} ${unit.subjectName}</span>
               <strong>${unit.title}</strong>
-              <small>${unit.gradeName} · 진행률 ${unitProgress(unit.id)}%</small>
+              <small>${unit.gradeName} · 진행률 ${unitProgress(unit.id)}% · ${unit.questions.length}문항</small>
             </button>
           `).join("")}
         </div>
       </aside>
+    </section>
+
+    <section class="section">
+      <div class="study-action-grid">
+        ${primaryActions.map((action) => `
+          <button class="study-action-card" data-route="${action.route}">
+            <span class="action-icon">${action.icon}</span>
+            <strong>${action.title}</strong>
+            <p>${action.copy}</p>
+            <span class="action-cta">${action.cta}</span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+
+    <section class="learning-flow">
+      ${["과목 선택", "학년 선택", "단원 선택", "개념 학습", "문제 풀이", "오답 복습"].map((step, index) => `
+        <div class="flow-step">
+          <span>${index + 1}</span>
+          <strong>${step}</strong>
+        </div>
+      `).join("")}
     </section>
 
     <section class="section">
@@ -414,6 +513,9 @@ function renderSubjectCard(subject) {
   const unitCount = subject.grades.reduce((sum, grade) => sum + grade.units.length, 0);
   const allSubjectUnits = subject.grades.flatMap((grade) => grade.units);
   const conceptCount = allSubjectUnits.reduce((sum, unit) => sum + unit.coreConcepts.length, 0);
+  const completed = allSubjectUnits.filter((unit) => unitProgress(unit.id) >= 100).length;
+  const remaining = Math.max(unitCount - completed, 0);
+  const nextUnit = nextUnitForSubject(subject);
   const progress = Math.round(
     allSubjectUnits.reduce((sum, unit) => sum + unitProgress(unit.id), 0) / Math.max(allSubjectUnits.length, 1)
   );
@@ -427,11 +529,16 @@ function renderSubjectCard(subject) {
       <p>${subject.description}</p>
       <div class="subject-meta">
         <span>${unitCount}개 단원</span>
+        <span>남은 단원 ${remaining}개</span>
         <span>${conceptCount}개 핵심 개념</span>
       </div>
       <div class="progress-row">
         <div class="progress-bar"><span style="width:${progress}%"></span></div>
         <strong>${progress}%</strong>
+      </div>
+      <div class="card-next-action">
+        <span>이어서 공부하기</span>
+        <strong>${nextUnit?.title || "단원 선택"}</strong>
       </div>
     </button>
   `;
@@ -555,6 +662,13 @@ function renderUnitCard(subject, grade, unit) {
       </div>
       <h3>${unit.title}</h3>
       <p>${unit.teaser}</p>
+      <div class="unit-signal-grid">
+        <span><strong>중요도</strong>${importanceLabel(unit)}</span>
+        <span><strong>난이도</strong>${unit.difficulty}</span>
+        <span><strong>문제</strong>${unit.questions.length}개</span>
+        <span><strong>시간</strong>${unit.recommendedMinutes || 35}분</span>
+        <span><strong>상태</strong>${completionLabel(unit)}</span>
+      </div>
       <div class="unit-stats">
         <span>핵심 개념 ${unit.coreConcepts.length}개</span>
         <span>문제 ${unit.questions.length}개</span>
@@ -631,6 +745,22 @@ function renderUnitOverview(unit) {
   return `
     <section class="content-layout">
       <div class="content-main">
+        <article class="study-map-card">
+          <div>
+            <span class="eyebrow">한눈 요약</span>
+            <h2>${unit.title} 공부 순서</h2>
+          </div>
+          <div class="study-map-grid">
+            <span>핵심 개념 ${unit.coreConcepts.length}개</span>
+            <span>공식/원리 ${unit.formulas.length + unit.principles.length}개</span>
+            <span>시험 포인트 ${unit.examTips.length}개</span>
+            <span>문제 ${unit.questions.length}개</span>
+          </div>
+          <ol class="quick-summary-list">
+            ${unit.summary.tenLines.slice(0, 5).map((line) => `<li>${line}</li>`).join("")}
+          </ol>
+        </article>
+
         <article class="info-card">
           <div class="section-head compact">
             <div>
@@ -657,10 +787,16 @@ function renderUnitOverview(unit) {
           <div class="concept-stack">
             ${unit.coreConcepts.map((concept) => `
               <section class="concept-card" id="concept-${slug(concept.term)}">
-                <h3>${concept.term}</h3>
-                <p><strong>쉬운 설명:</strong> ${concept.simple}</p>
-                <p><strong>자세한 설명:</strong> ${concept.detailed}</p>
-                <p><strong>시험식 설명:</strong> ${concept.exam}</p>
+                <div class="concept-card-head">
+                  <h3>${concept.term}</h3>
+                  <span class="badge badge-soft">시험 핵심</span>
+                </div>
+                <div class="concept-detail-grid">
+                  <p><strong>뜻</strong><span>${concept.simple}</span></p>
+                  <p><strong>쉽게 이해</strong><span>${concept.detailed}</span></p>
+                  <p><strong>시험 포인트</strong><span>${concept.exam}</span></p>
+                  <p><strong>암기 팁</strong><span>${concept.term}를 예시, 반례, 문제 조건과 함께 묶어 기억하세요.</span></p>
+                </div>
               </section>
             `).join("")}
           </div>
@@ -892,6 +1028,12 @@ function renderUnitQuiz(unit) {
         </div>
         <p>${session.index + 1}/${total}문제 · 제출하면 정답과 해설이 바로 나오고, 오답은 오답노트에 저장됩니다.</p>
       </div>
+      <div class="quiz-status-grid">
+        <span><strong>현재 문제</strong>${session.index + 1}번</span>
+        <span><strong>남은 문제</strong>${Math.max(total - session.index - 1, 0)}개</span>
+        <span><strong>난이도</strong>${currentQuestion.difficulty}</span>
+        <span><strong>유형</strong>${currentQuestion.type || currentQuestion.category}</span>
+      </div>
       <div class="progress-row quiz-progress">
         <div class="progress-bar"><span style="width:${Math.round(((session.index + 1) / total) * 100)}%"></span></div>
         <strong>${Math.round(((session.index + 1) / total) * 100)}%</strong>
@@ -933,7 +1075,8 @@ function renderQuestion(unit, question, index, session = null) {
       </div>
       ${checked ? `
         <div class="feedback-box ${correct ? "is-correct" : "is-wrong"}">
-          <strong>${correct ? "정답입니다." : "오답입니다."}</strong>
+          <strong>${correct ? "✓ 정답입니다." : "오답입니다. 오답노트에 저장됐습니다."}</strong>
+          <p><strong>내 답:</strong> ${question.options ? question.options[answer] ?? "미선택" : escapeHtml(answer || "미입력")}</p>
           <p><strong>정답:</strong> ${question.options ? question.options[question.answer] : question.answer}</p>
           <p><strong>해설:</strong> ${question.explanation}</p>
           ${question.wrongReasons?.length ? `
@@ -944,6 +1087,10 @@ function renderQuestion(unit, question, index, session = null) {
               </ul>
             </div>
           ` : ""}
+          <div class="quiz-actions">
+            <button class="ghost-btn" data-retry-question="${question.id}">이 문제 다시 풀기</button>
+            <button class="ghost-btn" data-jump-concept="${slug(question.relatedConcept)}">관련 개념 복습</button>
+          </div>
         </div>
       ` : ""}
     </article>
@@ -1056,33 +1203,98 @@ function renderPracticeHub() {
   `;
 }
 
+function wrongNoteAnalysis(notes) {
+  const bySubject = notes.reduce((map, note) => {
+    map[note.subjectName] = (map[note.subjectName] || 0) + 1;
+    return map;
+  }, {});
+  const byConcept = notes.reduce((map, note) => {
+    const key = note.relatedConcept || note.unitTitle;
+    map[key] = (map[key] || 0) + 1;
+    return map;
+  }, {});
+  return {
+    bySubject: Object.entries(bySubject).sort((a, b) => b[1] - a[1]),
+    byConcept: Object.entries(byConcept).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    reviewed: notes.filter((note) => note.reviewed).length,
+  };
+}
+
 function renderWrongNotes() {
+  const filteredNotes = state.wrongFilter === "all"
+    ? state.wrongNotes
+    : state.wrongNotes.filter((note) => note.subjectId === state.wrongFilter);
+  const analysis = wrongNoteAnalysis(filteredNotes);
   return `
     <section class="section">
       <div class="section-head">
         <div>
           <span class="eyebrow">오답노트</span>
-          <h2>틀린 문제와 틀린 이유를 다시 묶어 보기</h2>
+          <h2>약점 분석과 다시 풀기 중심 복습</h2>
         </div>
+        <select id="wrong-filter" class="filter-select">
+          <option value="all">전체 과목</option>
+          ${subjects.map((subject) => `<option value="${subject.id}" ${state.wrongFilter === subject.id ? "selected" : ""}>${subject.name}</option>`).join("")}
+        </select>
       </div>
+      <div class="wrong-analysis-grid">
+        <article class="panel-card">
+          <strong>${filteredNotes.length}</strong>
+          <span>복습할 오답</span>
+        </article>
+        <article class="panel-card">
+          <strong>${analysis.reviewed}</strong>
+          <span>복습 완료</span>
+        </article>
+        <article class="panel-card">
+          <strong>${analysis.bySubject[0]?.[0] || "아직 없음"}</strong>
+          <span>가장 약한 과목</span>
+        </article>
+        <article class="panel-card">
+          <strong>${analysis.byConcept[0]?.[0] || "아직 없음"}</strong>
+          <span>가장 약한 개념</span>
+        </article>
+      </div>
+      ${analysis.byConcept.length ? `
+        <article class="panel-card weakness-card">
+          <div class="panel-head">
+            <h3>약점 TOP ${analysis.byConcept.length}</h3>
+            <span class="badge badge-soft">많이 틀린 개념부터 복습</span>
+          </div>
+          <div class="weakness-list">
+            ${analysis.byConcept.map(([concept, count]) => `
+              <span><strong>${concept}</strong>${count}회</span>
+            `).join("")}
+          </div>
+        </article>
+      ` : ""}
       <div class="wrong-note-stack">
-        ${state.wrongNotes.length ? state.wrongNotes.map((note) => `
-          <article class="wrong-note-card">
+        ${filteredNotes.length ? filteredNotes.map((note) => `
+          <article class="wrong-note-card ${note.reviewed ? "is-reviewed" : ""}">
             <div class="panel-head">
               <div>
                 <span class="badge">${note.subjectName}</span>
                 <span class="badge badge-soft">${note.gradeName}</span>
+                <span class="badge badge-soft">${note.createdAt ? new Date(note.createdAt).toLocaleDateString("ko-KR") : "날짜 없음"}</span>
               </div>
-              <button class="ghost-btn" data-open-unit="${note.subjectId}|${note.gradeId}|${note.unitId}">관련 개념 다시 보기</button>
+              <div class="quiz-actions">
+                <button class="primary-btn" data-open-unit-quiz="${note.subjectId}|${note.gradeId}|${note.unitId}">다시 풀기</button>
+                <button class="ghost-btn" data-open-unit="${note.subjectId}|${note.gradeId}|${note.unitId}">관련 개념</button>
+              </div>
             </div>
             <h3>${note.unitTitle}</h3>
             <p>${note.prompt}</p>
+            <p><strong>내 답:</strong> ${note.userAnswer ?? "미입력"}</p>
             <p><strong>정답:</strong> ${note.correctAnswer}</p>
             <p><strong>해설:</strong> ${note.explanation}</p>
             <label class="memo-label">
               <span>틀린 이유 메모</span>
               <textarea data-note-memo="${note.id}" placeholder="예: 열과 온도를 헷갈림, 부호 처리 실수">${escapeHtml(note.memo || "")}</textarea>
             </label>
+            <div class="quiz-actions">
+              <button class="ghost-btn" data-review-note="${note.id}">${note.reviewed ? "복습 완료 해제" : "복습 완료"}</button>
+              <button class="ghost-btn danger-btn" data-delete-note="${note.id}">삭제</button>
+            </div>
           </article>
         `).join("") : `<div class="empty-panel">아직 저장된 오답이 없습니다. 문제를 풀다가 틀리면 이곳에 자동으로 저장됩니다.</div>`}
       </div>
@@ -1432,6 +1644,7 @@ function submitExam() {
     score: Math.round((correctCount / Math.max(entries.length, 1)) * 100),
     weakConcepts: [...new Set(weak)].slice(0, 5),
   };
+  recordSolvedQuestion(entries.length);
   save(storageKeys.wrong, state.wrongNotes);
   render();
 }
@@ -1484,6 +1697,10 @@ document.addEventListener("change", (event) => {
   }
   if (target.id === "practice-filter") {
     state.practiceFilter = target.value;
+    render();
+  }
+  if (target.id === "wrong-filter") {
+    state.wrongFilter = target.value;
     render();
   }
   if (target.id === "exam-subject") {
@@ -1568,6 +1785,7 @@ document.addEventListener("click", (event) => {
     if (session && !wasChecked) {
       session.submitted += 1;
       if (correct) session.correct += 1;
+      recordSolvedQuestion();
     }
     const checkedCount = Object.keys(state.checked).length;
     if (checkedCount >= unit.questions.length) setProgress(unitId, 100);
@@ -1578,6 +1796,45 @@ document.addEventListener("click", (event) => {
   if (button.dataset.nextQuestion) {
     const session = state.quizSession[button.dataset.nextQuestion];
     if (session) session.index = Math.min(session.index + 1, session.questionIds.length - 1);
+    render();
+    return;
+  }
+
+  if (button.dataset.retryQuestion) {
+    const questionId = button.dataset.retryQuestion;
+    const unit = getUnit(state.subjectId, state.gradeId, state.unitId);
+    const question = unit?.questions.find((item) => item.id === questionId);
+    const session = state.quizSession[state.unitId];
+    if (question && session && state.checked[questionId]) {
+      session.submitted = Math.max(0, session.submitted - 1);
+      if (isCorrect(question, state.answers[questionId])) session.correct = Math.max(0, session.correct - 1);
+    }
+    delete state.answers[questionId];
+    delete state.checked[questionId];
+    render();
+    return;
+  }
+
+  if (button.dataset.openUnitQuiz) {
+    state.query = "";
+    const [subjectId, gradeId, unitId] = button.dataset.openUnitQuiz.split("|");
+    switchToUnit(subjectId, gradeId, unitId, "quiz");
+    return;
+  }
+
+  if (button.dataset.reviewNote) {
+    const note = state.wrongNotes.find((item) => item.id === button.dataset.reviewNote);
+    if (note) {
+      note.reviewed = !note.reviewed;
+      save(storageKeys.wrong, state.wrongNotes);
+    }
+    render();
+    return;
+  }
+
+  if (button.dataset.deleteNote) {
+    state.wrongNotes = state.wrongNotes.filter((item) => item.id !== button.dataset.deleteNote);
+    save(storageKeys.wrong, state.wrongNotes);
     render();
     return;
   }
