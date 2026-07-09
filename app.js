@@ -745,6 +745,25 @@ function renderUnitPage() {
 }
 
 function renderUnitOverview(unit) {
+  const fallbackFormulaItems = unit.principles.slice(0, 2).map((item) => ({
+    title: item.title,
+    body: item.body,
+  }));
+  const formulaItems = unit.formulas.length
+    ? unit.formulas
+    : fallbackFormulaItems.length
+      ? fallbackFormulaItems
+      : unit.coreConcepts.slice(0, 2).map((concept) => ({
+          title: concept.term,
+          body: concept.exam || concept.detailed,
+        }));
+  const comparisonRows = unit.comparisonTable?.length
+    ? unit.comparisonTable
+    : unit.coreConcepts.slice(0, 4).map((concept) => ({
+        label: concept.term,
+        value: concept.exam || concept.simple,
+      }));
+
   return `
     <section class="content-layout">
       <div class="content-main">
@@ -828,18 +847,16 @@ function renderUnitOverview(unit) {
               </article>
             `).join("")}
           </div>
-          ${unit.formulas.length ? `
-            <div class="formula-box">
-              <h3>공식 · 법칙 · 이론</h3>
-              ${unit.formulas.map((item) => `
-                <div class="formula-row">
-                  <strong>${item.name || item.title}</strong>
-                  ${item.formula ? `<code>${item.formula}</code>` : ""}
-                  <p>${item.meaning || item.body}</p>
-                </div>
-              `).join("")}
-            </div>
-          ` : ""}
+          <div class="formula-box">
+            <h3>공식 · 법칙 · 이론</h3>
+            ${formulaItems.map((item) => `
+              <div class="formula-row">
+                <strong>${item.name || item.title}</strong>
+                ${item.formula ? `<code>${item.formula}</code>` : ""}
+                <p>${item.meaning || item.body}</p>
+              </div>
+            `).join("")}
+          </div>
         </article>
 
         <article class="info-card">
@@ -883,24 +900,22 @@ function renderUnitOverview(unit) {
           </div>
         </article>
 
-        ${unit.comparisonTable?.length ? `
-          <article class="info-card">
-            <div class="section-head compact">
-              <div>
-                <span class="eyebrow">비교표</span>
-                <h2>헷갈리는 개념을 한눈에 구분하기</h2>
+        <article class="info-card comparison-card">
+          <div class="section-head compact">
+            <div>
+              <span class="eyebrow">비교표</span>
+              <h2>헷갈리는 개념을 한눈에 구분하기</h2>
+            </div>
+          </div>
+          <div class="compare-table">
+            ${comparisonRows.map((row) => `
+              <div class="compare-row">
+                <strong>${row.label}</strong>
+                <span>${row.value}</span>
               </div>
-            </div>
-            <div class="compare-table">
-              ${unit.comparisonTable.map((row) => `
-                <div class="compare-row">
-                  <strong>${row.label}</strong>
-                  <span>${row.value}</span>
-                </div>
-              `).join("")}
-            </div>
-          </article>
-        ` : ""}
+            `).join("")}
+          </div>
+        </article>
 
         ${unit.conversation?.length ? `
           <article class="info-card">
@@ -923,7 +938,7 @@ function renderUnitOverview(unit) {
           </article>
         ` : ""}
 
-        <article class="info-card">
+        <article class="info-card exam-point-card">
           <div class="section-head compact">
             <div>
               <span class="eyebrow">⑥ 만점 포인트</span>
