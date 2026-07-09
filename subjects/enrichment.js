@@ -597,6 +597,78 @@ function addReferenceLinks(unit, subject) {
   unit.referenceLinks = links;
 }
 
+function deepenConceptCards(unit, subject) {
+  const firstFormula = unit.formulas[0];
+  const firstExample = unit.examples[0];
+  const bySubject = {
+    math: {
+      why: "수학 고난도 문제는 정의보다 조건 변형과 풀이 순서에서 갈린다.",
+      principle: "조건을 식으로 바꾸고, 같은 의미의 식을 여러 형태로 변형해 보는 것이 핵심이다.",
+      pattern: "계산형, 그래프 해석형, 조건 변형형, 서술형 풀이 과정 문제가 나온다.",
+      mistake: "공식에 숫자만 넣고 조건 범위나 부호, 단위를 확인하지 않는 실수가 많다.",
+      template: "조건을 정리하면 ___이고, 이를 식으로 나타내면 ___이다. 따라서 ___을 적용해 ___를 구한다.",
+    },
+    science: {
+      why: "과학 문제는 용어 암기가 아니라 현상, 실험, 법칙, 그래프를 연결해야 풀린다.",
+      principle: "변인과 단위를 확인한 뒤 법칙이 적용되는 조건을 먼저 따진다.",
+      pattern: "실험 해석형, 그래프 해석형, 법칙 적용형, 생활 현상 설명형이 자주 나온다.",
+      mistake: "관찰 결과와 해석, 조작 변인과 종속 변인을 섞는 실수가 많다.",
+      template: "이 현상은 ___ 때문에 일어난다. 실험에서 바꾼 것은 ___이고 측정한 것은 ___이므로 결론은 ___이다.",
+    },
+    english: {
+      why: "영어는 문법 구조와 문맥을 동시에 보아야 어법, 빈칸, 순서, 회화 문제를 맞힌다.",
+      principle: "주어와 동사를 먼저 잡고, 수식어와 절을 분리한 뒤 의미 흐름을 확인한다.",
+      pattern: "어법 판단, 문장 전환, 빈칸 추론, 대화 응답, 글의 흐름 문제가 나온다.",
+      mistake: "단어 뜻 하나만 보고 문장 구조나 시제를 무시하는 실수가 많다.",
+      template: "이 문장은 주어 ___, 동사 ___ 구조이고, ___가 ___를 수식하므로 뜻은 ___이다.",
+    },
+    society: {
+      why: "사회는 개념과 실제 사례, 자료 해석을 연결해야 서술형과 자료형 문제를 풀 수 있다.",
+      principle: "원인, 과정, 영향, 해결 방안을 나누어 자료와 연결한다.",
+      pattern: "지도/통계/그래프 해석, 사례 판단, 제도 비교, 해결 방안 서술 문제가 나온다.",
+      mistake: "자료의 기준 연도, 단위, 범례를 보지 않고 결론을 단정하는 실수가 많다.",
+      template: "자료에서 ___가 증가/감소하므로 ___ 현상을 알 수 있다. 원인은 ___이고 영향은 ___이다.",
+    },
+    history: {
+      why: "역사는 연도 암기보다 사건의 원인, 전개, 결과, 의의를 연결해야 만점 답안이 된다.",
+      principle: "시대 배경, 주도 세력, 전개, 결과, 의의를 순서대로 정리한다.",
+      pattern: "연표 배열, 사료 해석, 인물 활동, 사건 비교, 의의 서술 문제가 나온다.",
+      mistake: "비슷한 시기의 사건 순서와 주도 인물을 섞는 실수가 많다.",
+      template: "이 사건은 ___을 배경으로 ___가 주도했으며, 결과적으로 ___가 나타났고 의의는 ___이다.",
+    },
+    korean: {
+      why: "국어는 지문 속 근거를 찾아 표현 방식, 구조, 주제를 연결해야 한다.",
+      principle: "갈래, 화자나 서술자, 구조, 표현, 주제, 근거 문장을 차례로 확인한다.",
+      pattern: "내용 일치, 표현 효과, 문법 적용, 주제 파악, 서술형 근거 제시 문제가 나온다.",
+      mistake: "느낌으로 답을 고르고 지문 근거를 표시하지 않는 실수가 많다.",
+      template: "지문에서 ___라고 했으므로, 이는 ___을 드러낸다. 따라서 정답 근거는 ___이다.",
+    },
+  };
+  const guide = bySubject[subject.id] || {
+    why: "개념을 문제 조건과 실제 사례에 연결해야 한다.",
+    principle: "정의, 예시, 반례, 적용 조건을 함께 정리한다.",
+    pattern: "개념 확인, 자료 해석, 적용, 서술형 문제가 나온다.",
+    mistake: "용어만 외우고 적용 조건을 놓치는 실수가 많다.",
+    template: "핵심 개념은 ___이고, 조건 ___에서 ___처럼 적용된다.",
+  };
+
+  unit.coreConcepts.forEach((item, index) => {
+    item.whyImportant ||= `${item.term}은 ${unit.title}에서 다음 개념과 문제 풀이를 연결하는 중심 개념이다. ${guide.why}`;
+    item.principle ||= `${guide.principle} ${item.detailed}`;
+    item.example ||= firstExample?.body || `${item.term}을 실제 상황에 적용할 때는 조건과 예외를 먼저 확인한다.`;
+    item.rule ||= firstFormula
+      ? `${firstFormula.name || firstFormula.title}: ${firstFormula.formula || firstFormula.body || firstFormula.meaning}`
+      : `${item.term}의 정의, 조건, 예외를 한 묶음으로 기억한다.`;
+    item.examPattern ||= guide.pattern;
+    item.commonError ||= guide.mistake;
+    item.confusingConcept ||= unit.coreConcepts[(index + 1) % unit.coreConcepts.length]?.term || unit.title;
+    item.sampleProblem ||= `${unit.title}에서 ${item.term}을 실제 문제 조건에 적용하면 어떤 판단을 해야 하는가?`;
+    item.solutionSteps ||= "1. 문제에서 묻는 개념을 표시한다. 2. 조건과 자료를 정리한다. 3. 공식/원리/근거를 적용한다. 4. 답과 오답 이유를 비교한다.";
+    item.answerTemplate ||= guide.template;
+    item.understandingCheck ||= `${item.term}을 예시, 반례, 시험 출제 방식까지 포함해 설명할 수 있으면 이해한 것이다.`;
+  });
+}
+
 function buildCuratedQuestion(unit, subject, seq) {
   const current = firstConcept(unit, seq);
   const difficulty = ["쉬움", "보통", "어려움", "보통"][seq % 4];
@@ -713,15 +785,102 @@ function addCuratedQuestionSet(subjects, target = 200) {
   return added;
 }
 
+function buildMasteryQuestion(unit, subject, index) {
+  const current = firstConcept(unit, index);
+  const pack = [
+    { category: "개념 확인", difficulty: "쉬움", type: "객관식" },
+    { category: "기본 문제", difficulty: "쉬움", type: "객관식" },
+    { category: "학교 시험형", difficulty: "보통", type: "객관식" },
+    { category: "서술형", difficulty: "보통", type: "서술형" },
+    { category: "실생활 적용", difficulty: "보통", type: "객관식" },
+    { category: "최상위", difficulty: "어려움", type: "객관식" },
+  ][index % 6];
+  const id = slug(`mastery-25-${subject.id}-${unit.grade}-${unit.title}-${index}-${current.term}`);
+  const explanation = [
+    `1. 문제에서 묻는 것은 ${current.term}의 뜻과 적용 조건이다.`,
+    `2. 필요한 개념은 ${current.simple}`,
+    `3. 풀이 순서는 개념 확인 -> 조건 정리 -> 원리 적용 -> 오답 비교이다.`,
+    `4. 정답은 핵심 개념을 조건에 맞게 설명한 선택지 또는 답안이다.`,
+    `5. 다른 보기는 조건을 빠뜨리거나 ${current.term}을(를) 다른 개념과 혼동했다.`,
+    "6. 비슷한 문제에서는 단어만 보지 말고 자료, 그래프, 문장 조건을 함께 확인한다.",
+  ].join(" ");
+
+  if (pack.type === "서술형") {
+    return {
+      id,
+      type: "서술형",
+      category: pack.category,
+      difficulty: pack.difficulty,
+      prompt: `${unit.title}에서 '${current.term}'의 의미와 시험에서 중요한 이유를 조건, 예시, 오답 포인트를 포함해 서술하시오.`,
+      answer: current.term,
+      explanation,
+      wrongReasons: [
+        "정의만 쓰고 왜 중요한지 또는 적용 조건을 쓰지 않았다.",
+        "예시 없이 암기 문장만 적어 문제 상황에 적용하지 못했다.",
+        "비슷한 개념과의 차이를 설명하지 않았다.",
+      ],
+      relatedConcept: current.term,
+      tags: ["25문항 보장", pack.category, subject.name, unit.title],
+    };
+  }
+
+  return {
+    id,
+    type: "객관식",
+    category: pack.category,
+    difficulty: pack.difficulty,
+    prompt: `${unit.title}의 '${current.term}'을(를) ${pack.category} 관점에서 바르게 설명한 것은?`,
+    options: [
+      `${current.term}은(는) ${current.exam}`,
+      `${current.term}은(는) 단원과 직접 관련 없는 배경 지식만 뜻한다.`,
+      `${current.term}은(는) 조건이나 예외를 보지 않아도 항상 같은 방식으로 적용된다.`,
+      `${current.term}은(는) 문제 풀이에서 외울 필요가 없는 부가 설명이다.`,
+    ],
+    answer: 0,
+    explanation,
+    wrongReasons: [
+      "배경 설명과 핵심 개념을 혼동했다.",
+      "조건과 예외를 무시해 모든 문제에 같은 방식으로 적용하려 했다.",
+      "시험 출제 포인트가 되는 개념의 역할을 낮게 본 선택지다.",
+    ],
+    relatedConcept: current.term,
+    tags: ["25문항 보장", pack.category, subject.name, unit.title],
+  };
+}
+
+function ensureMinimumQuestionCount(subjects, target = 25) {
+  let added = 0;
+  subjects.forEach((subject) => {
+    subject.grades.forEach((grade) => {
+      grade.units.forEach((unit) => {
+        let cursor = 0;
+        while (unit.questions.length < target) {
+          const question = buildMasteryQuestion(unit, subject, cursor + unit.questions.length);
+          if (!unit.questions.some((item) => item.id === question.id)) {
+            unit.questions.push(question);
+            added += 1;
+          }
+          cursor += 1;
+        }
+      });
+    });
+  });
+  return added;
+}
+
+function difficultyCount(questions, names) {
+  return questions.filter((question) => names.includes(question.difficulty)).length;
+}
+
 function finalizePlans(subjects, curatedCount) {
   subjects.forEach((subject) => {
     subject.grades.forEach((grade) => {
       grade.units.forEach((unit) => {
-        const easy = unit.questions.filter((question) => question.difficulty === "쉬움").length;
-        const normal = unit.questions.filter((question) => question.difficulty === "보통").length;
-        const hard = unit.questions.filter((question) => question.difficulty === "어려움").length;
+        const easy = difficultyCount(unit.questions, ["쉬움", "기초"]);
+        const normal = difficultyCount(unit.questions, ["보통", "중"]);
+        const hard = difficultyCount(unit.questions, ["어려움", "상"]);
         const count = unit.questions.length;
-        unit.recommendedMinutes = count >= 20 ? 65 : count >= 16 ? 55 : count >= 12 ? 45 : 40;
+        unit.recommendedMinutes = count >= 25 ? 75 : count >= 20 ? 65 : count >= 16 ? 55 : count >= 12 ? 45 : 40;
         unit.problemPlan = {
           count,
           minutes: unit.recommendedMinutes,
@@ -740,6 +899,7 @@ function finalizePlans(subjects, curatedCount) {
 
   subjects.enrichmentMeta = {
     curatedQuestionCount: curatedCount,
+    minimumQuestionTarget: 25,
     label: "만점 예제 200제",
   };
 }
@@ -755,11 +915,14 @@ export function enrichSubjects(subjects) {
         addHistoryTimelineDepth(unit);
         addSubjectStudyBlocks(unit, subject);
         addReferenceLinks(unit, subject);
+        deepenConceptCards(unit, subject);
       });
     });
   });
 
   const curatedCount = addCuratedQuestionSet(subjects, 200);
+  const minimumAdded = ensureMinimumQuestionCount(subjects, 25);
   finalizePlans(subjects, curatedCount);
+  subjects.enrichmentMeta.minimumQuestionAdded = minimumAdded;
   return subjects;
 }

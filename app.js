@@ -293,7 +293,24 @@ function searchContent(query) {
       unit.field,
       unit.difficulty,
       ...unit.achievementGoals,
-      ...unit.coreConcepts.flatMap((item) => [item.term, item.simple, item.detailed, item.exam]),
+      ...unit.coreConcepts.flatMap((item) => [
+        item.term,
+        item.simple,
+        item.detailed,
+        item.exam,
+        item.whyImportant,
+        item.principle,
+        item.example,
+        item.rule,
+        item.examPattern,
+        item.commonError,
+        item.confusingConcept,
+        item.sampleProblem,
+        item.solutionSteps,
+        item.answerTemplate,
+        item.understandingCheck,
+      ]),
+      ...unit.formulas.flatMap((item) => [item.title, item.body, item.usage, item.caution]),
       ...unit.principles.flatMap((item) => [item.title, item.body]),
       ...unit.examples.flatMap((item) => [item.title, item.body]),
       ...unit.relatedFigures.flatMap((item) => [item.name, item.work]),
@@ -316,6 +333,44 @@ function render() {
       <main class="page-shell">
         ${renderMain()}
       </main>
+    </div>
+  `;
+}
+
+const learningPathSteps = [
+  { route: "subjects", label: "과목", hint: "선택" },
+  { route: "grades", label: "학년", hint: "범위" },
+  { route: "subject", label: "단원", hint: "목차" },
+  { route: "concepts", label: "개념", hint: "정리" },
+  { route: "practice", label: "문제", hint: "풀이" },
+  { route: "wrong", label: "오답", hint: "복습" },
+];
+
+function currentLearningStepIndex() {
+  if (state.route === "wrong") return 5;
+  if (state.route === "practice" || state.route === "exam") return 4;
+  if (state.route === "concepts") return 3;
+  if (state.route === "unit") return state.unitTab === "quiz" ? 4 : 3;
+  if (state.route === "subject") return 2;
+  if (state.route === "grades") return 1;
+  if (state.route === "subjects") return 0;
+  return 0;
+}
+
+function renderLearningPath() {
+  const activeIndex = currentLearningStepIndex();
+  return `
+    <div class="top-learning-path" aria-label="학습 흐름">
+      ${learningPathSteps.map((step, index) => {
+        const status = index < activeIndex ? "done" : index === activeIndex ? "active" : "upcoming";
+        return `
+          <button class="path-step ${status}" data-route="${step.route}">
+            <span>${index + 1}</span>
+            <strong>${step.label}</strong>
+            <small>${step.hint}</small>
+          </button>
+        `;
+      }).join("")}
     </div>
   `;
 }
@@ -346,6 +401,7 @@ function renderTopbar() {
         <span>현재 위치</span>
         <strong>${trail.join(" › ")}</strong>
       </div>
+      ${renderLearningPath()}
     </header>
   `;
 }
@@ -744,6 +800,65 @@ function renderUnitPage() {
   `;
 }
 
+function renderConceptDetailRows(concept) {
+  const rows = [
+    ["뜻", concept.simple],
+    ["정확한 정의", concept.detailed],
+    ["왜 중요한가", concept.whyImportant],
+    ["원리", concept.principle],
+    ["예시", concept.example],
+    ["공식/규칙", concept.rule],
+    ["시험 유형", concept.examPattern || concept.exam],
+    ["자주 하는 실수", concept.commonError],
+    ["헷갈리는 개념", concept.confusingConcept],
+    ["대표 문제", concept.sampleProblem],
+    ["풀이 순서", concept.solutionSteps],
+    ["서술형 답안 틀", concept.answerTemplate],
+    ["이해 체크", concept.understandingCheck || `${concept.term}를 예시, 반례, 문제 조건과 함께 묶어 기억하세요.`],
+  ].filter(([, value]) => value);
+
+  return rows.map(([label, value]) => `<p><strong>${label}</strong><span>${value}</span></p>`).join("");
+}
+
+function renderSideStudyCoach(unit) {
+  const conceptFocus = unit.coreConcepts.slice(0, 3).map((item) => item.term).join(", ");
+  const firstTip = unit.examTips[0] || unit.examImportance;
+  const firstQuestion = unit.questions[0];
+  const reviewTarget = unit.problemPlan?.review || "틀린 문제는 오답노트에서 같은 개념을 다시 확인한 뒤 재풀이하세요.";
+
+  return `
+    <article class="side-card mastery-coach">
+      <h3>오늘의 만점 루틴</h3>
+      <ol class="coach-flow">
+        <li>
+          <span>1</span>
+          <p><strong>개념 1회독</strong>${conceptFocus || unit.title}의 정의와 조건을 먼저 표시합니다.</p>
+        </li>
+        <li>
+          <span>2</span>
+          <p><strong>대표 문제</strong>${firstQuestion ? firstQuestion.prompt : "개념별 대표 문제"}를 풀이 순서대로 풀어 봅니다.</p>
+        </li>
+        <li>
+          <span>3</span>
+          <p><strong>시험 포인트</strong>${firstTip}</p>
+        </li>
+        <li>
+          <span>4</span>
+          <p><strong>오답 복습</strong>${reviewTarget}</p>
+        </li>
+      </ol>
+    </article>
+    <article class="side-card weak-point-card">
+      <h3>헷갈림 방지</h3>
+      <div class="weak-chip-list">
+        ${unit.coreConcepts.slice(0, 4).map((concept) => `
+          <span>${concept.commonError || `${concept.term}: 조건과 예외를 함께 확인`}</span>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
 function renderUnitOverview(unit) {
   const fallbackFormulaItems = unit.principles.slice(0, 2).map((item) => ({
     title: item.title,
@@ -814,10 +929,7 @@ function renderUnitOverview(unit) {
                   <span class="badge badge-soft">시험 핵심</span>
                 </div>
                 <div class="concept-detail-grid">
-                  <p><strong>뜻</strong><span>${concept.simple}</span></p>
-                  <p><strong>쉽게 이해</strong><span>${concept.detailed}</span></p>
-                  <p><strong>시험 포인트</strong><span>${concept.exam}</span></p>
-                  <p><strong>암기 팁</strong><span>${concept.term}를 예시, 반례, 문제 조건과 함께 묶어 기억하세요.</span></p>
+                  ${renderConceptDetailRows(concept)}
                 </div>
               </section>
             `).join("")}
@@ -969,6 +1081,7 @@ function renderUnitOverview(unit) {
           <button class="primary-btn wide-btn" data-unit-tab="quiz">문제 바로 풀기</button>
           <button class="ghost-btn wide-btn" data-route="wrong">오답노트 보기</button>
         </article>
+        ${renderSideStudyCoach(unit)}
         ${unit.problemPlan ? `
           <article class="side-card problem-plan-card">
             <h3>문제 풀이 계획</h3>
